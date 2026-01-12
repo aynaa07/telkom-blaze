@@ -60,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   const currentMenu = role === 'admin' ? adminMenu : userMenu;
   const profileRoute = role === 'admin' ? '/admin/profile' : '/dashboard/profile';
+  const notifRoute = role === 'admin' ? '/admin/notifications' : '/dashboard/notifications';
 
   return (
     <html lang="en" className="hide-scrollbar">
@@ -116,12 +117,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   </div>
                 </div>
 
-                {/* ICONS GROUP: SETTINGS & NOTIF */}
                 <div className="flex items-center gap-2">
                   <Link href={profileRoute} className={`p-2.5 rounded-xl border transition-all ${pathname === profileRoute ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'}`}>
                     <Settings size={20} />
                   </Link>
-                  <Link href="/dashboard/notifications" className={`relative p-2.5 rounded-xl border transition-all ${pathname === '/dashboard/notifications' ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'}`}>
+                  <Link href={notifRoute} className={`relative p-2.5 rounded-xl border transition-all ${pathname === notifRoute ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'}`}>
                     <Bell size={20} />
                     <span className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full border-2 border-black animate-pulse"></span>
                   </Link>
@@ -152,6 +152,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </div>
               ))}
             </nav>
+            {/* LOGOUT MOBILE */}
+            <div className="pt-6 mt-6 border-t border-zinc-900">
+              <button 
+                onClick={handleLogout}
+                className="w-full h-12 flex items-center justify-center gap-3 bg-zinc-900/50 border border-zinc-800 rounded-xl text-red-600 font-black italic text-[10px] uppercase tracking-widest"
+              >
+                <LogOut size={18} /> Abort Mission
+              </button>
+            </div>
           </div>
         </div>
         {isMobileMenuOpen && <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[140] lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
