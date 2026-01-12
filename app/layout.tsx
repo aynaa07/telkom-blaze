@@ -46,16 +46,57 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     router.push('/login');
   };
 
+  // --- SIDEBAR MENU CONFIGURATION ---
   const adminMenu = [
-    { group: "COMMAND CENTER", items: [{ href: "/admin", icon: <LayoutDashboard size={18}/>, label: "Command Center" }, { href: "/admin/attendance", icon: <ClipboardList size={18}/>, label: "Attendance Logs" }] },
-    { group: "FIELD OPERATIONS", items: [{ href: "/admin/tournament", icon: <Swords size={18}/>, label: "Matches & Results" }, { href: "/admin/training", icon: <Target size={18}/>, label: "Squad Training" }] },
-    { group: "FINANCIAL & ASSETS", items: [{ href: "/admin/treasury", icon: <Wallet size={18}/>, label: "Treasury Command" }, { href: "/admin/gallery", icon: <ImageIcon size={18}/>, label: "Media Gallery" }] },
-    { group: "SQUAD SYSTEM", items: [{ href: "/admin/players", icon: <Users size={18}/>, label: "Manage Players" }, { href: "/dashboard/best-players", icon: <Crown size={18}/>, label: "Best Blazers" }] }
+    { 
+      group: "COMMAND CENTER", 
+      items: [
+        { href: "/admin", icon: <LayoutDashboard size={18}/>, label: "Command Center" }, 
+        { href: "/admin/attendance", icon: <ClipboardList size={18}/>, label: "Attendance Logs" }
+      ] 
+    },
+    { 
+      group: "FIELD OPERATIONS", 
+      items: [
+        { href: "/admin/tournament", icon: <Swords size={18}/>, label: "Matches & Results" }, 
+        { href: "/admin/training", icon: <Target size={18}/>, label: "Squad Training" },
+        { href: "/admin/news", icon: <Newspaper size={18}/>, label: "Post Team News" } 
+      ] 
+    },
+    { 
+      group: "FINANCIAL & ASSETS", 
+      items: [
+        { href: "/admin/treasury", icon: <Wallet size={18}/>, label: "Treasury Command" }, 
+        { href: "/admin/gallery", icon: <ImageIcon size={18}/>, label: "Media Gallery" }
+      ] 
+    },
+    { 
+      group: "SQUAD SYSTEM", 
+      items: [
+        { href: "/admin/players", icon: <Users size={18}/>, label: "Manage Players" }, 
+        { href: "/dashboard/best-players", icon: <Crown size={18}/>, label: "Best Blazers" }
+      ] 
+    }
   ];
 
   const userMenu = [
-    { group: "OPERATIONS", items: [{ href: "/dashboard", icon: <LayoutDashboard size={18}/>, label: "Overview" }, { href: "/dashboard/match-intel", icon: <Swords size={18}/>, label: "Match Intel" }, { href: "/player/scan", icon: <QrCode size={18}/>, label: "Scan Attendance" }, { href: "/dashboard/treasury", icon: <Wallet size={18}/>, label: "My Treasury" }] },
-    { group: "TEAM ARCHIVE", items: [{ href: "/dashboard/gallery", icon: <ImageIcon size={18}/>, label: "Team Gallery" }, { href: "/dashboard/news", icon: <Newspaper size={18}/>, label: "Team News" }, { href: "/dashboard/best-players", icon: <Crown size={18}/>, label: "Best Blazers" }] }
+    { 
+      group: "OPERATIONS", 
+      items: [
+        { href: "/dashboard", icon: <LayoutDashboard size={18}/>, label: "Overview" }, 
+        { href: "/dashboard/match-intel", icon: <Swords size={18}/>, label: "Match Intel" }, 
+        { href: "/player/scan", icon: <QrCode size={18}/>, label: "Scan Attendance" }, 
+        { href: "/dashboard/treasury", icon: <Wallet size={18}/>, label: "My Treasury" }
+      ] 
+    },
+    { 
+      group: "TEAM ARCHIVE", 
+      items: [
+        { href: "/dashboard/gallery", icon: <ImageIcon size={18}/>, label: "Team Gallery" }, 
+        { href: "/dashboard/news", icon: <Newspaper size={18}/>, label: "Team News" }, 
+        { href: "/dashboard/best-players", icon: <Crown size={18}/>, label: "Best Blazers" }
+      ] 
+    }
   ];
 
   const currentMenu = role === 'admin' ? adminMenu : userMenu;
@@ -74,12 +115,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="h-screen overflow-y-auto hide-scrollbar">{children}</div>
         ) : (
           <div className="flex h-screen overflow-hidden">
-            {/* SIDEBAR DESKTOP */}
+            
+            {/* --- SIDEBAR DESKTOP --- */}
             <aside className="w-64 border-r border-zinc-900 bg-black flex flex-col hidden lg:flex z-[120] shrink-0">
               <div className="p-8 flex-1 overflow-y-auto hide-scrollbar">
                 <div className="flex flex-col gap-4 mb-12 px-2">
-                  <div className="w-10 h-10 bg-white rounded-xl p-1.5 shadow-xl shadow-white/5"><img src="/logo-ukm.png" alt="Logo" className="w-full h-full object-contain" /></div>
-                  <div className="text-xl font-black italic uppercase tracking-tighter text-white leading-none">TELKOM<span className="text-red-600">BLAZE</span></div>
+                  <div className="w-10 h-10 bg-white rounded-xl p-1.5 shadow-xl shadow-white/5">
+                    <img src="/logo-ukm.png" alt="Logo" className="w-full h-full object-contain" />
+                  </div>
+                  <div className="text-xl font-black italic uppercase tracking-tighter text-white leading-none">
+                    TELKOM<span className="text-red-600">BLAZE</span>
+                  </div>
                 </div>
                 <nav className="space-y-8">
                   {currentMenu.map((group, idx) => (
@@ -103,20 +149,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </aside>
 
-            {/* MAIN CONTENT AREA */}
+            {/* --- MAIN CONTENT AREA --- */}
             <div className="flex-1 flex flex-col bg-black overflow-hidden">
               <header className="border-b border-zinc-900 p-4 flex justify-between items-center bg-black h-[72px] shrink-0">
                 <div className="flex items-center gap-4">
-                  <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 bg-white rounded-lg"><img src="/logo-ukm.png" className="w-5 h-5 object-contain" alt="Logo" /></button>
+                  <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 bg-white rounded-lg">
+                    <img src="/logo-ukm.png" className="w-5 h-5 object-contain" alt="Logo" />
+                  </button>
                   <div className="hidden lg:flex items-center gap-3 px-2">
-                    <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center"><User size={14} className="text-zinc-500" /></div>
+                    <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                      <User size={14} className="text-zinc-500" />
+                    </div>
                     <div className="min-w-0">
                       <p className="text-[10px] font-black uppercase text-white leading-none italic truncate">{userData?.name}</p>
-                      <p className="text-[8px] font-bold text-zinc-700 uppercase tracking-widest italic">{role === 'admin' ? 'ADMIN' : `ID: ${userData?.nim}`}</p>
+                      <p className="text-[8px] font-bold text-zinc-700 uppercase tracking-widest italic">{role === 'admin' ? 'ADMIN AUTHORITY' : `ID: ${userData?.nim}`}</p>
                     </div>
                   </div>
                 </div>
 
+                {/* --- HEADER ICONS --- */}
                 <div className="flex items-center gap-2">
                   <Link href={profileRoute} className={`p-2.5 rounded-xl border transition-all ${pathname === profileRoute ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'}`}>
                     <Settings size={20} />
@@ -135,7 +186,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         )}
 
-        {/* MOBILE DRAWER */}
+        {/* --- MOBILE DRAWER --- */}
         <div className={`fixed inset-y-0 left-0 z-[150] w-[280px] bg-black border-r border-zinc-900 transition-transform duration-500 lg:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="flex flex-col h-full p-8 bg-black">
             <div className="flex justify-between items-center mb-10">
@@ -145,24 +196,29 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav className="flex-1 space-y-8 overflow-y-auto hide-scrollbar">
               {currentMenu.map((group, idx) => (
                 <div key={idx} className="space-y-3">
-                  <p className="text-[8px] font-black text-zinc-700 uppercase tracking-widest ml-2 flex items-center gap-2 italic"><span className="w-2 h-[1px] bg-red-600"></span> {group.group}</p>
+                  <p className="text-[8px] font-black text-zinc-700 uppercase tracking-widest ml-2 flex items-center gap-2 italic">
+                    <span className="w-2 h-[1px] bg-red-600"></span> {group.group}
+                  </p>
                   {group.items.map((item) => (
                     <MobileNavLink key={item.href} {...item} active={pathname === item.href} onClick={() => setIsMobileMenuOpen(false)} />
                   ))}
                 </div>
               ))}
             </nav>
-            {/* LOGOUT MOBILE */}
+            
+            {/* LOGOUT MOBILE BUTTON */}
             <div className="pt-6 mt-6 border-t border-zinc-900">
               <button 
                 onClick={handleLogout}
-                className="w-full h-12 flex items-center justify-center gap-3 bg-zinc-900/50 border border-zinc-800 rounded-xl text-red-600 font-black italic text-[10px] uppercase tracking-widest"
+                className="w-full h-12 flex items-center justify-center gap-3 bg-zinc-900/50 border border-zinc-800 rounded-xl text-red-600 font-black italic text-[10px] uppercase tracking-widest active:scale-95 transition-all"
               >
                 <LogOut size={18} /> Abort Mission
               </button>
             </div>
           </div>
         </div>
+
+        {/* OVERLAY */}
         {isMobileMenuOpen && <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[140] lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
 
         <style jsx global>{`
@@ -173,6 +229,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+
+// --- SUB-COMPONENTS ---
 
 function SidebarLink({ href, icon, label, active }: any) {
   return (
@@ -185,7 +243,7 @@ function SidebarLink({ href, icon, label, active }: any) {
 
 function MobileNavLink({ href, icon, label, active, onClick }: any) {
   return (
-    <Link href={href} onClick={onClick} className={`flex items-center gap-4 px-5 py-4 rounded-2xl border transition-all ${active ? 'bg-red-600 border-red-500 text-white' : 'bg-black border-zinc-900 text-zinc-500'}`}>
+    <Link href={href} onClick={onClick} className={`flex items-center gap-4 px-5 py-4 rounded-2xl border transition-all ${active ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' : 'bg-black border-zinc-900 text-zinc-500'}`}>
       <span className={active ? 'text-white' : 'text-red-600'}>{icon}</span>
       <span className="text-[10px] font-black uppercase tracking-widest italic flex-1 leading-none">{label}</span>
       <ChevronRight size={14} className={active ? 'opacity-100' : 'opacity-20'} />
