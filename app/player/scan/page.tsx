@@ -12,13 +12,13 @@ export default function PlayerScan() {
   useEffect(() => {
     if (status !== 'idle') return;
     
-    // Konfigurasi Scanner yang lebih pas untuk HP
+    // Konfigurasi scanner khusus layar HP
     const scanner = new Html5QrcodeScanner(
       "reader", 
       { 
-        fps: 15, 
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0 // Kotak sempurna untuk tampilan mobile
+        fps: 20, 
+        qrbox: { width: 220, height: 220 }, // Ukuran kotak scan di HP
+        aspectRatio: 1.0 
       }, 
       false
     );
@@ -38,17 +38,16 @@ export default function PlayerScan() {
     
     try {
       const [sessionName, timestamp] = qrData.split('|');
-      
       const creationTime = parseInt(timestamp);
       const currentTime = new Date().getTime();
       const oneHour = 60 * 60 * 1000;
 
       if (isNaN(creationTime) || (currentTime - creationTime) > oneHour) {
-        throw new Error("QR CODE EXPIRED! Minta Admin generate kode baru.");
+        throw new Error("KODE QR EXPIRED! Minta Admin buat kode baru.");
       }
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User Not Authenticated");
+      if (!user) throw new Error("Gagal mengenali user.");
 
       const today = new Date().toISOString().split('T')[0];
       const { data: existing } = await supabase.from('attendance_logs')
@@ -57,7 +56,7 @@ export default function PlayerScan() {
         .eq('session_name', sessionName)
         .gte('created_at', today);
 
-      if (existing && existing.length > 0) throw new Error("Anda sudah absen hari ini!");
+      if (existing && existing.length > 0) throw new Error("Sabar, kamu sudah absen hari ini!");
 
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
       await supabase.from('attendance_logs').insert({ player_id: user.id, session_name: sessionName });
@@ -76,81 +75,78 @@ export default function PlayerScan() {
   };
 
   return (
-    <div className="p-4 md:p-10 bg-black min-h-screen flex items-center justify-center font-sans">
-      <div className="w-full max-w-md bg-zinc-950 border border-zinc-900 rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-10 text-center relative overflow-hidden shadow-2xl">
-        {/* Glow Effect Top */}
+    <div className="p-4 md:p-10 bg-black min-h-screen flex items-center justify-center font-['Belleza',sans-serif]">
+      <div className="w-full max-w-sm bg-zinc-950 border border-zinc-900 rounded-[2.5rem] p-6 md:p-10 text-center relative overflow-hidden shadow-2xl">
+        
+        {/* Glow Line Atas */}
         <div className="absolute top-0 left-0 w-full h-1 bg-red-600 shadow-[0_0_20px_rgba(220,38,38,0.5)]"></div>
 
         {status === 'idle' && (
           <div className="animate-in fade-in zoom-in duration-500">
             <div className="flex justify-center mb-6">
               <div className="bg-red-600/10 p-3 rounded-2xl border border-red-600/20">
-                <QrCode className="text-red-600" size={24} />
+                <QrCode className="text-red-600" size={28} />
               </div>
             </div>
             
-            <h2 className="text-2xl font-black italic uppercase text-white mb-2 leading-none">
-              SCAN <span className="text-red-600 text-shadow-glow">ATTENDANCE</span>
+            <h2 className="text-2xl font-black italic uppercase text-white mb-2 leading-none font-['Poppins',sans-serif]">
+              SCAN <span className="text-red-600">ABSEN</span>
             </h2>
             
-            {/* TULISAN SEBELUM SCAN - DIBUAT PUTIH TERANG */}
-            <p className="text-white font-bold text-[10px] uppercase tracking-widest mb-8 opacity-100 italic">
-               Ready to Scan. Position the QR code within the frame.
+            <p className="text-zinc-500 font-bold text-[9px] md:text-[10px] uppercase tracking-[0.2em] mb-8 italic">
+                Arahkan kamera ke Kode QR dari Admin
             </p>
 
-            <div className="relative">
-              <div id="reader" className="overflow-hidden rounded-3xl border-2 border-zinc-900 bg-zinc-900/40 shadow-inner overflow-hidden"></div>
-              {/* Corner Accents */}
-              <div className="absolute -top-1 -left-1 w-6 h-6 border-t-2 border-l-2 border-red-600 rounded-tl-lg pointer-events-none"></div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-2 border-r-2 border-red-600 rounded-br-lg pointer-events-none"></div>
+            <div className="relative mx-auto max-w-[260px]">
+              <div id="reader" className="overflow-hidden rounded-[2rem] border-2 border-zinc-900 bg-zinc-900/40"></div>
+              {/* Siku-siku Scanner */}
+              <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-red-600 rounded-tl-xl pointer-events-none"></div>
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-red-600 rounded-br-xl pointer-events-none"></div>
             </div>
 
-            <p className="mt-8 text-[9px] text-zinc-500 font-black uppercase tracking-[0.4em] italic leading-none animate-pulse">
-               // Tracking Personnel ID...
+            <p className="mt-8 text-[8px] text-zinc-700 font-bold uppercase tracking-[0.4em] italic leading-none animate-pulse font-sans">
+               // Menunggu Sensor...
             </p>
           </div>
         )}
 
         {status === 'loading' && (
           <div className="py-12 flex flex-col items-center">
-            <div className="relative">
-               <Loader2 className="animate-spin text-red-600 mb-6" size={60} />
-               <div className="absolute inset-0 blur-2xl bg-red-600/20 rounded-full"></div>
-            </div>
-            <p className="text-white font-black italic tracking-widest uppercase text-xs">Verifying Tactical ID...</p>
+            <Loader2 className="animate-spin text-red-600 mb-6" size={48} />
+            <p className="text-white font-bold italic tracking-widest uppercase text-[10px] font-['Poppins',sans-serif]">Memproses ID...</p>
           </div>
         )}
 
         {status === 'success' && (
-          <div className="py-8 animate-in zoom-in duration-500">
-            <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/20 shadow-[0_0_30px_rgba(34,197,94,0.1)]">
-               <CheckCircle2 className="text-green-500" size={40} />
+          <div className="py-6 animate-in zoom-in duration-500 font-sans">
+            <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/20">
+               <CheckCircle2 className="text-green-500" size={32} />
             </div>
-            <h2 className="text-3xl font-black text-white italic uppercase mb-2">IDENTIFIED</h2>
-            <div className="bg-zinc-900/50 py-2 px-4 rounded-full border border-zinc-900 w-fit mx-auto mb-10">
-               <p className="text-green-500 text-[9px] font-black uppercase tracking-widest italic">{msg}</p>
+            <h2 className="text-2xl font-black text-white italic uppercase mb-2 font-['Poppins',sans-serif]">BERHASIL!</h2>
+            <div className="bg-zinc-900/50 py-2 px-4 rounded-xl border border-zinc-800 w-fit mx-auto mb-10">
+               <p className="text-green-500 text-[10px] font-bold uppercase tracking-widest italic">{msg}</p>
             </div>
             <button 
               onClick={() => setStatus('idle')} 
-              className="w-full bg-white text-black py-5 rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-3 tracking-[0.2em] transition-all active:scale-95 shadow-xl italic"
+              className="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-3 tracking-[0.2em] active:scale-95 transition-all shadow-xl"
             >
-              <RefreshCcw size={16}/> Re-Scan Sensor
+              <RefreshCcw size={16}/> Scan Lagi
             </button>
           </div>
         )}
 
         {status === 'error' && (
-          <div className="py-8 animate-in zoom-in duration-500">
-            <div className="w-20 h-20 bg-red-600/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-600/20 shadow-[0_0_30px_rgba(220,38,38,0.1)]">
-               <ShieldAlert className="text-red-600" size={40} />
+          <div className="py-6 animate-in zoom-in duration-500 font-sans">
+            <div className="w-16 h-16 bg-red-600/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-600/20">
+               <ShieldAlert className="text-red-600" size={32} />
             </div>
-            <h2 className="text-3xl font-black text-white italic uppercase mb-2 leading-none">MISSION DENIED</h2>
-            <p className="text-red-500/70 text-[10px] font-bold uppercase tracking-widest mb-10 px-4 leading-relaxed">{msg}</p>
+            <h2 className="text-2xl font-black text-white italic uppercase mb-2 leading-none font-['Poppins',sans-serif]">GAGAL</h2>
+            <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-10 px-4 leading-relaxed italic">{msg}</p>
             <button 
               onClick={() => setStatus('idle')} 
-              className="w-full bg-red-600 text-white py-5 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-lg shadow-red-900/40 active:scale-95 italic"
+              className="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl active:scale-95 transition-all"
             >
-              Try Again
+              Coba Lagi
             </button>
           </div>
         )}
@@ -159,20 +155,20 @@ export default function PlayerScan() {
       <style jsx global>{`
         #reader__dashboard_section_csr { display: none; }
         #reader__camera_selection { 
-          background: black; 
+          background: #18181b; 
           color: white; 
           border: 1px solid #27272a; 
           padding: 8px; 
           border-radius: 12px;
           font-size: 10px;
           margin-bottom: 10px;
+          width: 100%;
         }
         #reader img { display: none; }
-        .text-shadow-glow { text-shadow: 0 0 15px rgba(220, 38, 38, 0.5); }
         button#html5-qrcode-button-camera-permission {
           background-color: #dc2626;
           color: white;
-          padding: 12px 24px;
+          padding: 12px 20px;
           border-radius: 12px;
           font-weight: 900;
           text-transform: uppercase;

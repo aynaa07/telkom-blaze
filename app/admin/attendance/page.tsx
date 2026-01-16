@@ -1,295 +1,271 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { QRCodeSVG } from 'qrcode.react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import SignatureCanvas from 'react-signature-canvas';
 import { 
-  Users, QrCode, ClipboardList, Loader2, 
-  UserCheck, Search, Clock, Camera, X, 
-  Trophy, Activity, TrendingUp
+  Users, QrCode, Loader2, Search, 
+  History as HistoryIcon, PenTool, Printer, Camera, X, Scan, ChevronRight, ChevronLeft
 } from 'lucide-react';
 
 export default function AdminAttendance() {
+  const [activeTab, setActiveTab] = useState<'deployment' | 'squad' | 'history'>('deployment');
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [sessionName, setSessionName] = useState('');
   const [qrValue, setQrValue] = useState('');
   const [players, setPlayers] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
   const [showScanner, setShowScanner] = useState(false);
+  const [showSigModal, setShowSigModal] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
+  const sigCanvas = useRef<any>(null);
 
-  useEffect(() => { 
-    fetchInitialData(); 
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  // --- LOGIKA SCANNER (ADMIN) ---
-  useEffect(() => {
-    if (!showScanner) return;
-    const scanner = new Html5QrcodeScanner("admin-reader", { 
-      fps: 10, qrbox: { width: 250, height: 250 } 
-    }, false);
-
-    const onScanSuccess = async (decodedText: string) => {
-      try {
-        await scanner.clear();
-        setShowScanner(false);
-        handleAdminOwnAttendance(decodedText);
-      } catch (err) { console.error(err); }
-    };
-    scanner.render(onScanSuccess, () => {});
-    return () => { scanner.clear().catch(() => {}); };
-  }, [showScanner]);
-
-  async function fetchInitialData() {
+  async function fetchData() {
     setLoading(true);
-    const [logsRes, playersRes] = await Promise.all([
-      supabase.from('attendance_logs').select('*, profiles(full_name, nim)').order('created_at', { ascending: false }).limit(20),
-      supabase.from('profiles').select('*').order('attendance_count', { ascending: false })
-    ]);
-    if (logsRes.data) setLogs(logsRes.data);
-    if (playersRes.data) setPlayers(playersRes.data);
-    setLoading(false);
+    try {
+      const [logsRes, pRes] = await Promise.all([
+        supabase.from('attendance_logs').select('*, profiles(full_name, nim, prodi)').order('created_at', { ascending: false }),
+        supabase.from('profiles').select('*').order('full_name')
+      ]);
+      if (logsRes.data) setLogs(logsRes.data);
+      if (pRes.data) setPlayers(pRes.data);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  const generateQR = () => {
-    if (!sessionName) return alert("Tentukan Nama Sesi Latihan!");
-    const timestamp = new Date().getTime();
-    setQrValue(`${sessionName}|${timestamp}`);
+  const handlePrint = () => {
+    setTimeout(() => { window.print(); }, 800);
   };
 
-  const handleAdminOwnAttendance = async (qrData: string) => {
-    const [name, timestamp] = qrData.split('|');
-    if (new Date().getTime() - parseInt(timestamp) > 3600000) return alert("QR EXPIRED!");
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  async function submitAbsen() {
+    if (sigCanvas.current.isEmpty()) return alert("Tanda tangan wajib!");
+    const sigData = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png');
     const { error } = await supabase.from('attendance_logs').insert({ 
-      player_id: user.id, session_name: name 
+      player_id: selectedPlayer.id, 
+      session_name: sessionName || 'Latihan Rutin',
+      signature_data: sigData 
     });
-    if (!error) { alert("Attendance Recorded!"); fetchInitialData(); }
-  };
+    if (!error) { setShowSigModal(false); fetchData(); }
+  }
 
-  const handleManualAttendance = async (player: any) => {
-    if (!sessionName) return alert("Isi Nama Sesi di kolom 'Session Deployment' dulu!");
-    if (confirm(`Absen manual untuk ${player.full_name}?`)) {
-      try {
-        const { error: logError } = await supabase.from('attendance_logs').insert({ 
-          player_id: player.id, session_name: sessionName 
-        });
-        if (logError) throw logError;
+  const sessions = Array.from(new Set(logs.map(l => l.session_name)));
 
-        const { data: profile, error: profileErr } = await supabase
-          .from('profiles').select('attendance_count, goals, attitude_score')
-          .eq('id', player.id).single();
-
-        if (profileErr || !profile) throw new Error("Gagal ambil profil.");
-
-        const currentCount = profile.attendance_count || 0;
-        const newCount = currentCount + 1;
-        const newTotalScore = ((profile.goals || 0) * 10) + (profile.attitude_score || 0) + (newCount * 5);
-
-        const { error: updateError } = await supabase.from('profiles')
-          .update({ attendance_count: newCount, score: newTotalScore }).eq('id', player.id);
-
-        if (updateError) throw updateError;
-        await fetchInitialData(); 
-      } catch (err: any) { alert("Error: " + err.message); }
-    }
-  };
-
-  const filteredPlayers = players.filter(p => p.full_name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-  if (loading && players.length === 0) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <Loader2 className="animate-spin text-red-600" size={40} />
+  if (loading) return (
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
+      <Loader2 className="animate-spin text-red-600 mb-4" size={32} />
+      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Loading Data...</p>
     </div>
   );
 
   return (
-    <div className="p-4 md:p-10 bg-black min-h-screen text-white font-sans">
-      {/* HEADER */}
-      <div className="mb-8 md:mb-12">
-        <h1 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter leading-none">
-          ATTENDANCE <span className="text-red-600">COMMAND</span>
-        </h1>
-        <p className="text-zinc-600 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">// Intelligence & Squad Logs</p>
+    // Menggunakan font Belleza dengan fallback sans-serif
+    <div className="p-4 md:p-8 bg-black min-h-screen text-white font-['Belleza',sans-serif] selection:bg-red-600">
+      
+      {/* HEADER SECTION */}
+      <div className="mb-8 flex flex-col gap-5 no-print">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter leading-none">
+            SQUAD <span className="text-red-600">INTEL</span>
+          </h1>
+          <p className="text-[9px] text-zinc-600 uppercase tracking-[0.3em] font-bold mt-2">
+            // Attendance Management System
+          </p>
+        </div>
+        
+        <div className="flex bg-zinc-950 p-1 border border-zinc-900 rounded-xl overflow-x-auto no-scrollbar shadow-lg">
+          <TabButton active={activeTab === 'deployment'} onClick={() => {setActiveTab('deployment'); setSelectedSession(null)}} label="Mission" icon={<Scan size={14}/>} />
+          <TabButton active={activeTab === 'squad'} onClick={() => {setActiveTab('squad'); setSelectedSession(null)}} label="Squad" icon={<Users size={14}/>} />
+          <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')} label="History" icon={<HistoryIcon size={14}/>} />
+        </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        
-        {/* LEFT: CONTROLS (QR & SCAN) */}
-        <div className="w-full lg:w-1/3 order-1 lg:order-1">
-          <div className="bg-zinc-950 border border-zinc-900 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl sticky lg:top-24">
-            <div className="flex items-center gap-3 mb-6 md:mb-8">
-              <QrCode className="text-red-600" size={18} />
-              <h2 className="font-black italic uppercase text-[10px] tracking-widest text-white/80">Session Deployment</h2>
-            </div>
-            
+      {/* --- TAB: MISSION --- */}
+      {activeTab === 'deployment' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in no-print">
+          <div className="bg-zinc-950 border border-zinc-900 p-6 rounded-3xl shadow-md">
+            <h3 className="text-[10px] uppercase text-red-600 mb-6 font-bold tracking-widest">Session Control</h3>
             <input 
-              type="text" placeholder="Session Name (Ex: Training A)" value={sessionName}
+              placeholder="Session Name..." value={sessionName}
               onChange={(e) => setSessionName(e.target.value)}
-              className="w-full bg-black border border-zinc-800 p-4 rounded-xl md:rounded-2xl mb-4 font-bold outline-none focus:border-red-600 text-sm transition-all placeholder:text-zinc-800"
+              className="w-full bg-black border border-zinc-800 p-4 rounded-xl mb-4 font-bold outline-none focus:border-red-600 uppercase text-white text-sm transition-all"
             />
-            
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <button onClick={generateQR} className="bg-red-600 hover:bg-red-700 py-4 rounded-xl md:rounded-2xl font-black uppercase text-[10px] italic transition-all active:scale-95 shadow-lg">Create QR</button>
-              <button 
-                onClick={() => setShowScanner(!showScanner)} 
-                className={`py-4 rounded-xl md:rounded-2xl font-black uppercase text-[10px] italic border flex items-center justify-center gap-2 transition-all ${showScanner ? 'bg-white text-black border-white' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-600'}`}
-              >
-                {showScanner ? <X size={14}/> : <Camera size={14}/>} {showScanner ? 'Close' : 'Scan'}
+            <div className="flex flex-col gap-3">
+              <button onClick={() => setQrValue(sessionName)} className="w-full bg-red-600 py-3.5 rounded-xl font-bold uppercase text-[10px] tracking-widest active:scale-95 transition-all">Generate QR</button>
+              <button onClick={() => setShowScanner(!showScanner)} className="w-full bg-zinc-900 border border-zinc-800 py-3.5 rounded-xl font-bold uppercase text-[10px] flex items-center justify-center gap-2 tracking-widest active:scale-95 transition-all">
+                {showScanner ? <X size={14}/> : <Camera size={14}/>} {showScanner ? 'Close' : 'Camera Scan'}
               </button>
             </div>
-
-            {showScanner && (
-              <div className="mt-4 overflow-hidden rounded-[1.5rem] border-2 border-red-600">
-                <div id="admin-reader"></div>
+          </div>
+          <div className="lg:col-span-2 flex items-center justify-center bg-zinc-950 border border-zinc-900 rounded-3xl p-8 min-h-[300px]">
+            {showScanner ? (
+              <div id="admin-reader" className="w-full max-w-sm rounded-2xl overflow-hidden border-2 border-red-600 shadow-xl"></div>
+            ) : qrValue ? (
+              <div className="p-6 bg-white rounded-2xl shadow-xl flex flex-col items-center animate-in zoom-in">
+                <QRCodeSVG value={qrValue} size={200} />
+                <p className="text-black font-bold mt-4 uppercase text-sm tracking-tight">{sessionName}</p>
               </div>
-            )}
-
-            {qrValue && !showScanner && (
-              <div className="mt-4 p-6 md:p-8 bg-white rounded-[2rem] flex flex-col items-center animate-in zoom-in duration-500 shadow-2xl">
-                <QRCodeSVG value={qrValue} size={160} />
-                <p className="text-black font-black mt-4 uppercase italic text-center leading-tight text-[11px]">{sessionName}</p>
-                <div className="mt-3 flex items-center gap-2 text-[8px] text-zinc-400 font-black uppercase">
-                   <Clock size={10} /> Expire: 60m
-                </div>
-              </div>
-            )}
+            ) : <p className="opacity-20 italic font-bold uppercase tracking-widest text-[10px]">Ready for session deployment</p>}
           </div>
         </div>
+      )}
 
-        {/* RIGHT: LIST (STATS & SQUAD) */}
-        <div className="w-full lg:w-2/3 order-2 lg:order-2 space-y-6">
-          
-          {/* TOP MINI STATS */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-            <div className="bg-zinc-950 border border-zinc-900 p-4 md:p-6 rounded-2xl md:rounded-[2rem]">
-              <p className="text-[8px] font-black uppercase text-zinc-600 tracking-widest mb-1 md:mb-2 flex items-center gap-2"><Activity size={10} className="text-red-600" /> Logs</p>
-              <span className="text-2xl md:text-4xl font-black italic text-white leading-none">{logs.length}</span>
-            </div>
-            <div className="bg-zinc-950 border border-zinc-900 p-4 md:p-6 rounded-2xl md:rounded-[2rem]">
-              <p className="text-[8px] font-black uppercase text-zinc-600 tracking-widest mb-1 md:mb-2 flex items-center gap-2"><TrendingUp size={10} className="text-green-500" /> Rate</p>
-              <span className="text-2xl md:text-4xl font-black italic text-green-500 leading-none">
-                {players.length > 0 ? Math.round((logs.length / (players.length * 5)) * 100) : 0}%
-              </span>
-            </div>
-            <div className="bg-zinc-950 border border-zinc-900 p-4 md:p-6 rounded-2xl md:rounded-[2rem] border-l-4 border-red-600 col-span-2 md:col-span-1">
-              <p className="text-[8px] font-black uppercase text-zinc-600 tracking-widest mb-1">Current</p>
-              <p className="text-sm md:text-lg font-black italic text-white uppercase truncate">{sessionName || "No Mission"}</p>
-            </div>
-          </div>
-
-          {/* SQUAD LIST */}
-          <div className="bg-zinc-950 border border-zinc-900 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl">
-            <div className="p-6 md:p-8 border-b border-zinc-900 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-900/10">
-              <h2 className="font-black italic uppercase text-xs tracking-tight flex items-center gap-2 text-white">
-                <Users className="text-red-600" size={16} /> Squad Performance
-              </h2>
-              <div className="relative w-full md:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-700" size={14} />
-                <input 
-                  onChange={(e) => setSearchTerm(e.target.value)} 
-                  placeholder="Find Member..." 
-                  className="bg-black border border-zinc-800 rounded-xl py-2.5 pl-10 pr-4 text-[10px] font-bold outline-none focus:border-red-600 w-full transition-all"
-                />
+      {/* --- TAB: SQUAD LIST --- */}
+      {activeTab === 'squad' && (
+        <div className="space-y-4 no-print animate-in fade-in">
+           <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-700" size={16} />
+              <input placeholder="Search squad member..." onChange={e => setSearchTerm(e.target.value)} className="w-full bg-zinc-950 border border-zinc-900 py-3.5 pl-12 pr-6 rounded-2xl text-xs font-bold uppercase outline-none focus:border-red-600 tracking-wider transition-all" />
+           </div>
+           <div className="bg-zinc-950 border border-zinc-900 rounded-2xl overflow-hidden shadow-md">
+              <div className="divide-y divide-zinc-900">
+                {players.filter(p => p.full_name.toLowerCase().includes(searchTerm.toLowerCase())).map(p => (
+                  <div key={p.id} className="p-5 flex justify-between items-center hover:bg-zinc-900 transition-colors group">
+                    <div>
+                      <p className="text-white font-bold text-base md:text-lg uppercase tracking-tight leading-tight">{p.full_name}</p>
+                      <p className="text-zinc-600 text-[10px] mt-0.5">{p.nim} // {p.prodi}</p>
+                    </div>
+                    <button onClick={() => { setSelectedPlayer(p); setShowSigModal(true); }} className="p-3.5 bg-green-600/10 text-green-500 rounded-xl border border-green-600/20 hover:bg-green-600 hover:text-white transition-all active:scale-95">
+                      <PenTool size={18} />
+                    </button>
+                  </div>
+                ))}
               </div>
-            </div>
-            
-            {/* DESKTOP TABLE (Hidden on Mobile) */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-black text-[9px] font-black uppercase text-zinc-700 tracking-[0.2em] border-b border-zinc-900">
-                  <tr>
-                    <th className="p-6">Squad Member</th>
-                    <th className="p-6 text-center">Sessions</th>
-                    <th className="p-6 text-center">Score</th>
-                    <th className="p-6 text-center">Reliability</th>
-                    <th className="p-6 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-900">
-                  {filteredPlayers.map(player => (
-                    <PlayerRow key={player.id} player={player} handleManual={handleManualAttendance} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+           </div>
+        </div>
+      )}
 
-            {/* MOBILE LIST (Hidden on Desktop) */}
-            <div className="md:hidden divide-y divide-zinc-900">
-              {filteredPlayers.map(player => (
-                <PlayerCardMobile key={player.id} player={player} handleManual={handleManualAttendance} />
+      {/* --- TAB: HISTORY --- */}
+      {activeTab === 'history' && (
+        <div className="animate-in fade-in space-y-4">
+          {!selectedSession ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 no-print">
+              {sessions.map((s, i) => (
+                <button 
+                  key={i} onClick={() => setSelectedSession(s)}
+                  className="bg-zinc-950 border border-zinc-900 p-6 rounded-2xl flex justify-between items-center group hover:border-red-600 transition-all text-left shadow-sm hover:shadow-red-600/10"
+                >
+                  <div>
+                    <span className="text-[9px] font-bold uppercase text-zinc-600 tracking-widest mb-1 block">Archive Session</span>
+                    <p className="text-lg font-bold uppercase tracking-tight text-white group-hover:text-red-600 transition-colors">{s}</p>
+                    <p className="text-[10px] text-zinc-700 font-bold mt-1 uppercase">
+                      {logs.filter(l => l.session_name === s).length} Personnel Present
+                    </p>
+                  </div>
+                  <ChevronRight size={20} className="text-zinc-800 group-hover:text-red-600 transition-all" />
+                </button>
               ))}
             </div>
+          ) : (
+            <div className="space-y-6 animate-in slide-in-from-right duration-300">
+              <div className="flex justify-between items-center no-print px-1">
+                <button onClick={() => setSelectedSession(null)} className="text-[10px] font-bold uppercase text-zinc-500 flex items-center gap-2 hover:text-white transition-all">
+                  <ChevronLeft size={16}/> Back to Archive
+                </button>
+                <button onClick={handlePrint} className="bg-white text-black px-5 py-2.5 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 hover:bg-red-600 hover:text-white transition-all shadow-lg">
+                  <Printer size={16}/> Save PDF
+                </button>
+              </div>
+
+              <div className="bg-zinc-950 border border-zinc-900 rounded-2xl overflow-hidden print-area shadow-lg">
+                <div className="hidden print:flex flex-row items-center justify-between mb-8 border-b border-black pb-4 text-black p-4">
+                  <img src="/logo-telkom.png" alt="Logo" className="w-14 h-14 object-contain" />
+                  <div className="flex-1 text-center px-4">
+                    <h2 className="text-base font-bold uppercase font-['Belleza',sans-serif]">Telkom University Kampus Jakarta</h2>
+                    <p className="text-[8px]">Jl. Raya Daan Mogot No.KM. 11, RW.4, Kedaung Kali Angke, Cengkareng, Jakarta Barat 11710</p>
+                    <h3 className="text-[11px] font-bold mt-3 underline uppercase">Report: {selectedSession}</h3>
+                  </div>
+                  <img src="/logo-ukm.png" alt="Logo" className="w-14 h-14 object-contain" />
+                </div>
+
+                <div className="overflow-x-auto no-scrollbar">
+                  <table className="w-full text-left print:text-black">
+                    <thead className="bg-zinc-900/50 text-[10px] font-bold text-zinc-500 uppercase border-b border-zinc-900 print:bg-zinc-100 print:text-black print:border-black">
+                      <tr>
+                        <th className="p-4 border-r border-zinc-900 print:border-black text-center w-12">NO</th>
+                        <th className="p-4 border-r border-zinc-900 print:border-black">PLAYER INFO</th>
+                        <th className="p-4 text-center print:border-black w-32">SIGNATURE</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-900 print:divide-black font-medium text-xs uppercase">
+                      {logs.filter(l => l.session_name === selectedSession).map((log, idx) => (
+                        <tr key={log.id} className="hover:bg-zinc-900/30 transition-colors print:text-black">
+                          <td className="p-4 border-r border-zinc-900 print:border-black text-center text-zinc-600 print:text-black">{idx + 1}</td>
+                          <td className="p-4 border-r border-zinc-900 print:border-black">
+                            <p className="text-sm font-bold tracking-tight">{log.profiles?.full_name}</p>
+                            <p className="text-[9px] text-zinc-600 font-medium tracking-wider print:text-zinc-500">{log.profiles?.nim} // {log.profiles?.prodi}</p>
+                          </td>
+                          <td className="p-2 h-[60px] flex items-center justify-center">
+                            {log.signature_data && (
+                              <img src={log.signature_data} alt="sig" className="h-10 w-auto grayscale brightness-0 contrast-200 object-contain" />
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* --- SIGNATURE MODAL --- */}
+      {showSigModal && (
+        <div className="fixed inset-0 z-[500] bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-zinc-950 border border-zinc-800 p-6 rounded-3xl w-full max-w-sm">
+            <h3 className="text-center text-lg font-bold uppercase tracking-tight mb-1">Authorization</h3>
+            <p className="text-center text-[10px] text-zinc-600 mb-6 uppercase tracking-widest">{selectedPlayer?.full_name}</p>
+            
+            <div className="bg-white rounded-xl overflow-hidden border-2 border-zinc-800 mb-6 touch-none">
+              <SignatureCanvas 
+                ref={sigCanvas} 
+                penColor='black' 
+                canvasProps={{ style: { width: '100%', height: '160px' }, className: 'sigCanvas' }} 
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => sigCanvas.current.clear()} className="bg-zinc-900 py-3 rounded-xl uppercase text-[10px] font-bold text-zinc-500">Clear</button>
+              <button onClick={submitAbsen} className="bg-red-600 py-3 rounded-xl uppercase text-[10px] font-bold shadow-lg">Confirm</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      <style jsx global>{`
+        /* Menghubungkan font Belleza dari Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Belleza&display=swap');
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @media print {
+          body * { visibility: hidden; background: white !important; font-family: 'Belleza', sans-serif !important; }
+          .no-print { display: none !important; }
+          .print-area, .print-area * { visibility: visible !important; }
+          .print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 0; }
+          img { visibility: visible !important; display: block !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          table { width: 100% !important; border-collapse: collapse !important; border: 1px solid black !important; }
+          th, td { border: 1px solid black !important; color: black !important; padding: 8px !important; }
+        }
+      `}</style>
     </div>
   );
 }
 
-// --- SUB-COMPONENTS UNTUK KERAPIHAN ---
-
-function PlayerRow({ player, handleManual }: any) {
-  const sessions = player.attendance_count || 0;
-  const percentage = Math.min(Math.round((sessions / 10) * 100), 100);
-
+function TabButton({ active, onClick, label, icon }: any) {
   return (
-    <tr className="hover:bg-zinc-900/40 transition-all group">
-      <td className="p-6">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
-            {player.avatar_url ? <img src={player.avatar_url} className="w-full h-full object-cover rounded-xl" /> : <Users size={16} className="text-zinc-800" />}
-          </div>
-          <div>
-            <p className="font-black italic text-sm uppercase tracking-tighter text-white leading-none mb-1">{player.full_name}</p>
-            <p className="text-[9px] text-zinc-700 font-mono tracking-widest">{player.nim}</p>
-          </div>
-        </div>
-      </td>
-      <td className="p-6 text-center font-black italic text-sm">{sessions}</td>
-      <td className="p-6 text-center">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600/5 border border-blue-600/20 rounded-lg">
-          <Trophy size={10} className="text-blue-500" />
-          <span className="text-[10px] font-black text-blue-500">+{sessions * 5}</span>
-        </div>
-      </td>
-      <td className="p-6 text-center min-w-[150px]">
-        <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden mb-1">
-          <div className={`h-full ${percentage > 70 ? 'bg-green-500' : 'bg-red-600'}`} style={{ width: `${percentage}%` }} />
-        </div>
-        <span className="text-[8px] font-black text-zinc-700 uppercase italic">{percentage}%</span>
-      </td>
-      <td className="p-6 text-right">
-        <button onClick={() => handleManual(player)} className="p-3 bg-green-600/10 text-green-500 rounded-xl border border-green-600/20 hover:bg-green-600 hover:text-white transition-all"><UserCheck size={16} /></button>
-      </td>
-    </tr>
-  );
-}
-
-function PlayerCardMobile({ player, handleManual }: any) {
-  const sessions = player.attendance_count || 0;
-  return (
-    <div className="p-5 flex items-center justify-between gap-4">
-      <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0 overflow-hidden">
-          {player.avatar_url ? <img src={player.avatar_url} className="w-full h-full object-cover" /> : <Users size={18} className="text-zinc-800" />}
-        </div>
-        <div>
-          <p className="font-black italic text-[11px] uppercase text-white leading-none mb-1">{player.full_name}</p>
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] font-black text-red-600 italic uppercase tracking-tighter">{sessions} SESSIONS</span>
-            <span className="text-[8px] text-zinc-700 font-mono">{player.nim}</span>
-          </div>
-        </div>
-      </div>
-      <button 
-        onClick={() => handleManual(player)}
-        className="h-11 w-11 flex items-center justify-center bg-green-600 rounded-xl text-white shadow-lg active:scale-90 transition-transform"
-      >
-        <UserCheck size={18} />
-      </button>
-    </div>
+    <button onClick={onClick} className={`flex items-center gap-2.5 px-6 py-3.5 rounded-xl text-[10px] font-bold uppercase transition-all shrink-0 ${active ? 'bg-red-600 text-white shadow-md' : 'text-zinc-600 hover:text-zinc-200'}`}>
+      {icon} <span className="tracking-wider">{label}</span>
+    </button>
   );
 }

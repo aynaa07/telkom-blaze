@@ -35,10 +35,10 @@ export default function AdminGalleryFolders() {
   }
 
   async function handleCreateAlbum() {
-    if (!albumName || !albumCoverFile) return alert("Folder Name & Cover are mandatory!");
+    if (!albumName || !albumCoverFile) return alert("Nama Folder & Foto Sampul wajib diisi!");
     setLoading(true);
     try {
-      const fileName = `cover_${Math.random()}.${albumCoverFile.name.split('.').pop()}`;
+      const fileName = `cover_${Date.now()}.${albumCoverFile.name.split('.').pop()}`;
       await supabase.storage.from('gallery').upload(fileName, albumCoverFile);
       const { data: urlData } = supabase.storage.from('gallery').getPublicUrl(fileName);
 
@@ -51,7 +51,7 @@ export default function AdminGalleryFolders() {
     if (!photoFile || !photoTitle || !selectedAlbum) return;
     setLoading(true);
     try {
-      const fileName = `${Math.random()}.${photoFile.name.split('.').pop()}`;
+      const fileName = `${Date.now()}.${photoFile.name.split('.').pop()}`;
       await supabase.storage.from('gallery').upload(fileName, photoFile);
       const { data: urlData } = supabase.storage.from('gallery').getPublicUrl(fileName);
 
@@ -63,113 +63,165 @@ export default function AdminGalleryFolders() {
   }
 
   return (
-    <div className="p-4 md:p-10 bg-black min-h-screen text-white font-sans">
+    <div className="p-4 md:p-10 bg-black min-h-screen text-white font-['Belleza',sans-serif]">
       
       {/* HEADER SECTION */}
-      <div className="flex flex-col gap-4 mb-10 mt-2">
+      <div className="flex flex-col gap-4 mb-10 font-['Poppins',sans-serif]">
         <div className="flex items-center justify-between">
           <div>
             {selectedAlbum && (
-              <button onClick={() => setSelectedAlbum(null)} className="flex items-center gap-1 text-red-600 mb-2 uppercase text-[9px] font-black italic tracking-widest">
-                <ArrowLeft size={14}/> Back
+              <button onClick={() => setSelectedAlbum(null)} className="flex items-center gap-2 text-red-600 mb-2 uppercase text-[10px] font-bold tracking-widest hover:text-white transition-colors">
+                <ArrowLeft size={16}/> Kembali ke Galeri
               </button>
             )}
-            <h1 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter leading-none">
-              {selectedAlbum ? selectedAlbum.name : <>GALLERY <span className="text-red-600">OPS</span></>}
+            <h1 className="text-3xl md:text-5xl font-semibold uppercase tracking-tight leading-none">
+              {selectedAlbum ? selectedAlbum.name : <>GALERI <span className="text-red-600">FOTO</span></>}
             </h1>
           </div>
           
           {/* Action Buttons */}
           {!selectedAlbum ? (
-            <button onClick={() => setShowAlbumModal(true)} className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl active:bg-red-600 transition-all flex items-center justify-center">
-              <FolderPlus size={20} className="text-red-600 hover:text-white"/>
+            <button onClick={() => setShowAlbumModal(true)} className="bg-zinc-950 border border-zinc-900 p-4 rounded-2xl hover:bg-red-600 transition-all shadow-xl group">
+              <FolderPlus size={24} className="text-red-600 group-hover:text-white"/>
             </button>
           ) : (
-            <button onClick={() => setShowPhotoModal(true)} className="bg-red-600 p-3 rounded-xl active:scale-90 transition-all shadow-lg shadow-red-900/40 flex items-center justify-center">
-              <Plus size={20} strokeWidth={4}/>
+            <button onClick={() => setShowPhotoModal(true)} className="bg-red-600 p-4 rounded-2xl active:scale-90 transition-all shadow-xl shadow-red-900/20">
+              <Plus size={24} strokeWidth={3}/>
             </button>
           )}
         </div>
       </div>
 
-      {/* VIEW 1: ALBUM LIST (2 Kolom di Mobile, 5 di Desktop) */}
+      {/* VIEW 1: ALBUM LIST */}
       {!selectedAlbum ? (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
           {albums.map((album) => (
-            <div key={album.id} onClick={() => setSelectedAlbum(album)} className="group space-y-3 active:scale-95 transition-transform">
-              <div className="aspect-[4/5] bg-zinc-950 border border-zinc-900 rounded-[1.5rem] relative overflow-hidden flex items-center justify-center shadow-xl">
+            <div key={album.id} onClick={() => setSelectedAlbum(album)} className="group cursor-pointer">
+              <div className="aspect-[4/5] bg-zinc-950 border border-zinc-900 rounded-[2rem] relative overflow-hidden shadow-2xl transition-all group-hover:border-red-600/50">
                 {album.cover_url ? (
-                  <img src={album.cover_url} className="w-full h-full object-cover opacity-60" alt={album.name} />
+                  <img src={album.cover_url} className="w-full h-full object-cover opacity-50 group-hover:opacity-80 transition-all duration-500 group-hover:scale-110" alt={album.name} />
                 ) : (
-                  <Folder size={40} className="text-zinc-800" />
+                  <Folder size={48} className="text-zinc-800" />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80" />
-                <button onClick={(e) => { e.stopPropagation(); if(confirm('Delete Folder?')) supabase.from('gallery_albums').delete().eq('id', album.id).then(fetchAlbums); }} className="absolute top-3 right-3 p-2 bg-black/60 rounded-lg text-red-600"><Trash2 size={12}/></button>
-                <div className="absolute bottom-4 left-4 right-4 text-center">
-                    <h3 className="text-[9px] font-black uppercase italic tracking-widest truncate">{album.name}</h3>
+                
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                
+                <button 
+                  onClick={(e) => { e.stopPropagation(); if(confirm('Hapus folder ini?')) supabase.from('gallery_albums').delete().eq('id', album.id).then(fetchAlbums); }} 
+                  className="absolute top-4 right-4 p-2 bg-black/60 rounded-xl text-zinc-500 hover:text-red-600 transition-colors z-10"
+                >
+                  <Trash2 size={14}/>
+                </button>
+
+                <div className="absolute bottom-6 left-6 right-6 text-center">
+                    <h3 className="text-sm font-bold uppercase tracking-widest truncate">{album.name}</h3>
                 </div>
               </div>
             </div>
           ))}
           {albums.length === 0 && (
-            <div className="col-span-full py-20 text-center border-2 border-dashed border-zinc-900 rounded-[2rem] opacity-20 text-[10px] font-black uppercase italic">No Folders Found</div>
+            <div className="col-span-full py-24 text-center border-2 border-dashed border-zinc-900 rounded-[3rem] opacity-20">
+              <p className="text-xs font-bold uppercase tracking-widest">Belum ada folder galeri</p>
+            </div>
           )}
         </div>
       ) : (
         /* VIEW 2: PHOTO GRID */
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-in fade-in duration-500">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 animate-in fade-in duration-500">
           {photos.map((photo) => (
-            <div key={photo.id} className="relative aspect-square rounded-[1.2rem] overflow-hidden border border-zinc-900 bg-zinc-950">
-              <img src={photo.image_url} className="w-full h-full object-cover opacity-80" />
-              <button onClick={() => { if(confirm('Erase photo?')) supabase.from('gallery').delete().eq('id', photo.id).then(() => fetchPhotos(selectedAlbum.id)); }} className="absolute top-2 right-2 p-2 bg-black/60 rounded-lg text-white"><Trash2 size={12}/></button>
+            <div key={photo.id} className="group relative aspect-square rounded-[1.5rem] overflow-hidden border border-zinc-900 bg-zinc-950 shadow-xl">
+              <img src={photo.image_url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
+              <button 
+                onClick={() => { if(confirm('Hapus foto ini?')) supabase.from('gallery').delete().eq('id', photo.id).then(() => fetchPhotos(selectedAlbum.id)); }} 
+                className="absolute top-3 right-3 p-2 bg-black/80 rounded-xl text-white hover:text-red-600 transition-all opacity-0 group-hover:opacity-100"
+              >
+                <Trash2 size={14}/>
+              </button>
             </div>
           ))}
           {photos.length === 0 && (
-            <div className="col-span-full py-20 text-center opacity-20 text-[10px] font-black uppercase italic tracking-widest">Folder Empty</div>
+            <div className="col-span-full py-24 text-center opacity-20">
+              <p className="text-xs font-bold uppercase tracking-widest">Folder ini masih kosong</p>
+            </div>
           )}
         </div>
       )}
 
-      {/* MODAL SYSTEM (Responsive Bottom-sheet) */}
+      {/* MODAL SYSTEM */}
       {(showAlbumModal || showPhotoModal) && (
-        <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-md flex items-end md:items-center justify-center p-0 md:p-6 animate-in slide-in-from-bottom duration-300">
-          <div className="bg-zinc-950 border-t md:border border-zinc-900 p-8 rounded-t-[2.5rem] md:rounded-[3rem] w-full max-w-md relative shadow-2xl">
-             <div className="w-12 h-1 bg-zinc-800 rounded-full mx-auto mb-6 md:hidden"></div>
-             <button onClick={() => {setShowAlbumModal(false); setShowPhotoModal(false)}} className="absolute top-6 right-6 text-zinc-500"><X/></button>
+        <div className="fixed inset-0 z-[1000] bg-black/98 backdrop-blur-md flex items-end md:items-center justify-center p-0 md:p-6 animate-in slide-in-from-bottom duration-300">
+          <div className="bg-zinc-950 border-t md:border border-zinc-900 p-8 rounded-t-[3rem] md:rounded-[3rem] w-full max-w-md relative shadow-2xl">
+             <button onClick={() => {setShowAlbumModal(false); setShowPhotoModal(false)}} className="absolute top-8 right-8 text-zinc-500 hover:text-white transition-colors">
+               <X size={24}/>
+             </button>
              
              {showAlbumModal ? (
-               <>
-                 <h3 className="text-xl font-black uppercase italic mb-6 tracking-tighter italic">Initialize <span className="text-red-600">Folder</span></h3>
-                 <div className="space-y-4">
-                    <input className="w-full bg-black border border-zinc-800 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-red-600 italic" placeholder="FOLDER NAME..." value={albumName} onChange={e => setAlbumName(e.target.value.toUpperCase())} />
-                    <label className="w-full h-32 bg-black border-2 border-dashed border-zinc-800 rounded-2xl flex flex-col items-center justify-center cursor-pointer active:bg-zinc-900 transition-all">
-                       {albumCoverFile ? <p className="text-[8px] font-black text-green-500 text-center uppercase px-4">{albumCoverFile.name}</p> : <><ImageIcon className="text-zinc-700 mb-2"/><p className="text-[8px] font-black text-zinc-700 uppercase italic">Set Folder Cover</p></>}
-                       <input type="file" className="hidden" accept="image/*" onChange={e => setAlbumCoverFile(e.target.files?.[0] || null)} />
-                    </label>
-                    <button onClick={handleCreateAlbum} disabled={loading} className="w-full bg-white text-black py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl italic">
-                       {loading ? <Loader2 className="animate-spin mx-auto" size={16}/> : "DEPLOY ARCHIVE"}
+               <div className="font-['Poppins',sans-serif]">
+                 <h3 className="text-2xl font-semibold uppercase mb-8 tracking-tight">Buat <span className="text-red-600">Folder</span></h3>
+                 <div className="space-y-5 font-sans">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase text-zinc-500 ml-1">Nama Folder</label>
+                      <input className="w-full bg-black border border-zinc-900 p-4 rounded-2xl text-sm font-bold uppercase outline-none focus:border-red-600 transition-all" placeholder="MISAL: MAKESTA 2026" value={albumName} onChange={e => setAlbumName(e.target.value.toUpperCase())} />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase text-zinc-500 ml-1">Foto Sampul</label>
+                      <label className="w-full h-36 bg-black border-2 border-dashed border-zinc-900 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-red-600/50 transition-all">
+                         {albumCoverFile ? (
+                           <p className="text-[10px] font-bold text-green-500 text-center uppercase px-6 line-clamp-2">{albumCoverFile.name}</p>
+                         ) : (
+                           <div className="flex flex-col items-center gap-2">
+                             <ImageIcon size={32} className="text-zinc-800"/>
+                             <p className="text-[10px] font-bold text-zinc-700 uppercase">Pilih Gambar Sampul</p>
+                           </div>
+                         )}
+                         <input type="file" className="hidden" accept="image/*" onChange={e => setAlbumCoverFile(e.target.files?.[0] || null)} />
+                      </label>
+                    </div>
+
+                    <button onClick={handleCreateAlbum} disabled={loading} className="w-full bg-red-600 text-white py-5 rounded-2xl font-bold uppercase text-[11px] tracking-widest shadow-xl active:scale-95 transition-all mt-4">
+                       {loading ? <Loader2 className="animate-spin mx-auto" size={20}/> : "SIMPAN FOLDER"}
                     </button>
                  </div>
-               </>
+               </div>
              ) : (
-               <>
-                 <h3 className="text-xl font-black uppercase italic mb-6 tracking-tighter italic">Add to <span className="text-red-600">{selectedAlbum.name}</span></h3>
-                 <div className="space-y-4">
-                    <input className="w-full bg-black border border-zinc-800 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-red-600 italic" placeholder="PHOTO TITLE..." value={photoTitle} onChange={e => setPhotoTitle(e.target.value.toUpperCase())} />
-                    <label className="w-full h-32 bg-black border-2 border-dashed border-zinc-800 rounded-2xl flex flex-col items-center justify-center cursor-pointer active:bg-zinc-900 transition-all">
-                       {photoFile ? <p className="text-[8px] font-black text-green-500 text-center uppercase px-4">{photoFile.name}</p> : <p className="text-[8px] font-black text-zinc-700 uppercase italic">Select Intel File</p>}
-                       <input type="file" className="hidden" onChange={e => setPhotoFile(e.target.files?.[0] || null)} />
-                    </label>
-                    <button onClick={handleUploadPhoto} disabled={loading} className="w-full bg-red-600 text-white py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl italic">
-                       {loading ? <Loader2 className="animate-spin mx-auto" size={16}/> : "UPLOAD TO FOLDER"}
+               <div className="font-['Poppins',sans-serif]">
+                 <h3 className="text-2xl font-semibold uppercase mb-8 tracking-tight">Tambah ke <span className="text-red-600 truncate max-w-[150px] inline-block align-bottom">{selectedAlbum.name}</span></h3>
+                 <div className="space-y-5 font-sans">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase text-zinc-500 ml-1">Judul Foto</label>
+                      <input className="w-full bg-black border border-zinc-900 p-4 rounded-2xl text-sm font-bold uppercase outline-none focus:border-red-600 transition-all" placeholder="JUDUL FOTO..." value={photoTitle} onChange={e => setPhotoTitle(e.target.value.toUpperCase())} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase text-zinc-500 ml-1">Pilih File</label>
+                      <label className="w-full h-36 bg-black border-2 border-dashed border-zinc-900 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-red-600/50 transition-all">
+                         {photoFile ? (
+                           <p className="text-[10px] font-bold text-green-500 text-center uppercase px-6 line-clamp-2">{photoFile.name}</p>
+                         ) : (
+                           <div className="flex flex-col items-center gap-2">
+                             <Upload size={32} className="text-zinc-800"/>
+                             <p className="text-[10px] font-bold text-zinc-700 uppercase">Pilih Foto Galeri</p>
+                           </div>
+                         )}
+                         <input type="file" className="hidden" onChange={e => setPhotoFile(e.target.files?.[0] || null)} />
+                      </label>
+                    </div>
+
+                    <button onClick={handleUploadPhoto} disabled={loading} className="w-full bg-red-600 text-white py-5 rounded-2xl font-bold uppercase text-[11px] tracking-widest shadow-xl active:scale-95 transition-all mt-4">
+                       {loading ? <Loader2 className="animate-spin mx-auto" size={20}/> : "UPLOAD SEKARANG"}
                     </button>
                  </div>
-               </>
+               </div>
              )}
           </div>
         </div>
       )}
-      <style jsx global>{` .scrollbar-hide::-webkit-scrollbar { display: none; } `}</style>
+      
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Belleza&family=Poppins:wght@400;500;600&display=swap');
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+      `}</style>
     </div>
   );
 }
